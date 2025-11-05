@@ -1,0 +1,230 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>건강관리실 의약품 재고 (오프라인 HTML)</title>
+<style>
+  :root{
+    --bg:#0f172a; --card:#111827; --muted:#94a3b8; --text:#e5e7eb; --accent:#22c55e; --warn:#f59e0b; --danger:#ef4444; --line:#1f2937;
+  }
+  *{box-sizing:border-box;font-family:system-ui,-apple-system,Segoe UI,Roboto,Apple SD Gothic Neo,Noto Sans KR,Malgun Gothic,Helvetica,Arial,sans-serif}
+  body{margin:0;background:var(--bg);color:var(--text)}
+  header{position:sticky;top:0;background:rgba(15,23,42,.8);backdrop-filter:blur(8px);border-bottom:1px solid #111}
+  .wrap{max-width:1200px;margin:0 auto;padding:16px}
+  h1{font-size:20px;margin:8px 0}
+  nav{display:flex;gap:8px;flex-wrap:wrap}
+  nav button{padding:10px 14px;border-radius:10px;border:1px solid #222;background:#111;color:var(--text);cursor:pointer}
+  nav button.active{background:#1f2937}
+  .grid{display:grid;gap:12px}
+  @media(min-width:900px){.grid{grid-template-columns:1.3fr .7fr}}
+  .card{background:var(--card);border:1px solid #1f2937;border-radius:14px;padding:14px}
+  .muted{color:var(--muted)}
+  input,select,textarea{width:100%;padding:10px 12px;border-radius:10px;border:1px solid #263042;background:#0b1220;color:var(--text)}
+  label{font-size:12px;color:var(--muted)}
+  table{width:100%;border-collapse:collapse}
+  th,td{padding:8px;border-bottom:1px solid #263042;text-align:left;font-size:14px}
+  th{color:#aab4c1}
+  .row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+  .btn{padding:10px 14px;border:1px solid #263042;border-radius:10px;background:#0b1220;color:var(--text);cursor:pointer}
+  .btn.primary{background:#14532d;border-color:#166534}
+  .pill{display:inline-block;padding:4px 8px;border-radius:999px;font-size:12px;border:1px solid #2a3342}
+  .pill.warn{background:#3a2b03;color:#fbbf24}
+  .pill.danger{background:#3a0a0a;color:#f87171}
+  .flex{display:flex;gap:8px;align-items:center;justify-content:space-between}
+  .mt8{margin-top:8px}.mt16{margin-top:16px}.mt24{margin-top:24px}
+  .right{justify-content:flex-end}
+  canvas{width:100%;height:280px;background:#0b1220;border:1px solid #263042;border-radius:10px}
+  .footer{color:#64748b;font-size:12px;margin-top:30px}
+  .kbd{border:1px solid #334155;padding:1px 6px;border-radius:6px;background:#0b1220}
+</style>
+</head>
+<body>
+<header>
+  <div class="wrap">
+    <h1>🏥 건강관리실 의약품 재고 (오프라인 HTML)</h1>
+    <nav id="tabs">
+      <button data-tab="dash" class="active">대시보드</button>
+      <button data-tab="inout">입고/사용</button>
+      <button data-tab="batches">배치/유통기한</button>
+      <button data-tab="reports">월별 통계</button>
+      <button data-tab="settings">설정/백업</button>
+    </nav>
+  </div>
+</header>
+
+<main class="wrap">
+  <!-- DASHBOARD -->
+  <section id="tab-dash">
+    <div class="grid">
+      <div class="card">
+        <div class="flex"><h2>재고 현황</h2><span class="muted" id="asof"></span></div>
+        <table id="tblOnhand"><thead>
+          <tr><th>의약품</th><th>단위</th><th>현재고</th><th>안전재고</th><th>최단 유통기한</th><th>상태</th></tr>
+        </thead><tbody></tbody></table>
+      </div>
+      <div class="card">
+        <h3>경고</h3>
+        <div id="alerts"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- IN/OUT -->
+  <section id="tab-inout" style="display:none">
+    <div class="grid">
+      <div class="card">
+        <h3>의약품 등록(한 번만)</h3>
+        <div class="row">
+          <div><label>의약품명</label><input id="medName" placeholder="예: 아세트아미노펜 500mg"></div>
+          <div><label>단위(선택)</label><input id="medUnit" placeholder="정/캡슐/앰플"></div>
+        </div>
+        <div class="row mt8">
+          <div><label>안전재고 기준</label><input id="medThreshold" type="number" min="1" value="10"></div>
+        </div>
+        <div class="mt8 right"><button class="btn primary" id="btnAddMed">등록</button></div>
+      </div>
+
+      <div class="card">
+        <h3>입고 처리</h3>
+        <div class="row3">
+          <div><label>의약품</label><select id="rcvMed"></select></div>
+          <div><label>로트/배치</label><input id="rcvLot" placeholder="예: LOT-2025-11"></div>
+          <div><label>유통기한</label><input id="rcvExp" type="date"></div>
+        </div>
+        <div class="row mt8">
+          <div><label>입고 수량</label><input id="rcvQty" type="number" min="1" value="10"></div>
+          <div><label>비고</label><input id="rcvNote"></div>
+        </div>
+        <div class="mt8 right"><button class="btn primary" id="btnReceive">입고 반영</button></div>
+      </div>
+
+      <div class="card">
+        <h3>사용(출고) 처리</h3>
+        <div class="row">
+          <div><label>의약품</label><select id="useMed"></select></div>
+          <div><label>사용 수량</label><input id="useQty" type="number" min="1" value="1"></div>
+        </div>
+        <div class="row mt8">
+          <div><label>비고</label><input id="useNote"></div>
+          <div style="display:flex;align-items:flex-end;justify-content:flex-end">
+            <button class="btn primary" id="btnUse">사용 반영(FEFO)</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- BATCHES -->
+  <section id="tab-batches" style="display:none">
+    <div class="card">
+      <h3>배치 목록</h3>
+      <table id="tblBatches"><thead>
+        <tr><th>의약품</th><th>로트</th><th>유통기한</th><th>수량</th><th>입고일</th></tr>
+      </thead><tbody></tbody></table>
+    </div>
+  </section>
+
+  <!-- REPORTS -->
+  <section id="tab-reports" style="display:none">
+    <div class="card">
+      <div class="row">
+        <div>
+          <label>기준 월</label>
+          <input id="repMonth" type="month">
+        </div>
+        <div>
+          <label>최근 n개월</label>
+          <input id="repN" type="number" min="3" max="24" value="12">
+        </div>
+      </div>
+      <div class="mt16">
+        <h3>해당 월 사용 Top 10</h3>
+        <canvas id="barTop"></canvas>
+      </div>
+      <div class="mt16">
+        <h3>월별 사용/입고 추이</h3>
+        <canvas id="lineTrend"></canvas>
+      </div>
+    </div>
+  </section>
+
+  <!-- SETTINGS -->
+  <section id="tab-settings" style="display:none">
+    <div class="grid">
+      <div class="card">
+        <h3>의약품 삭제</h3>
+        <div class="row">
+          <div><label>의약품</label><select id="delMed"></select></div>
+          <div style="display:flex;align-items:flex-end;justify-content:flex-end">
+            <button class="btn" id="btnDelete">삭제</button>
+          </div>
+        </div>
+        <p class="muted">※ 삭제 시 해당 의약품의 배치/내역도 함께 삭제됩니다.</p>
+      </div>
+      <div class="card">
+        <h3>백업/복원</h3>
+        <div class="row">
+          <div>
+            <button class="btn" id="btnExport">데이터 내보내기(JSON)</button>
+          </div>
+          <div>
+            <input id="impFile" type="file" accept=".json">
+            <button class="btn" id="btnImport">가져오기</button>
+          </div>
+        </div>
+        <p class="muted mt8">내보낸 JSON 파일을 다른 PC로 옮겨 “가져오기”하면 그대로 복원됩니다.</p>
+      </div>
+    </div>
+    <div class="footer">
+      ⌨︎ 팁: 검색은 <span class="kbd">Ctrl</span>+<span class="kbd">F</span>, 새로고침은 <span class="kbd">F5</span>
+    </div>
+  </section>
+</main>
+
+<script>
+const KEY='medinv_v1';
+function load(){try{return JSON.parse(localStorage.getItem(KEY))||{meds:[],batches:[],tx:[]};}catch(e){return {meds:[],batches:[],tx:[]};}}
+function save(db){localStorage.setItem(KEY,JSON.stringify(db));}
+const fmtDate=d=>d?new Date(d).toISOString().slice(0,10):'';
+function today(){const d=new Date();d.setHours(0,0,0,0);return d;}
+function parseDateInput(v){return v?new Date(v+'T00:00:00'):null;}
+function onhand(db){
+  const map={}; db.meds.forEach(m=>map[m.id]={name:m.name,unit:m.unit||'',threshold:m.threshold||10,onhand:0,soonest:null});
+  db.batches.forEach(b=>{const m=map[b.medId]; if(!m)return; m.onhand+=b.qty; if(b.qty>0&&b.expiry){const d=new Date(b.expiry); if(!m.soonest||d<m.soonest)m.soonest=d;}});
+  return Object.entries(map).map(([id,m])=>({id:parseInt(id,10),name:m.name,unit:m.unit,onhand:m.onhand,threshold:m.threshold,soonest:m.soonest?fmtDate(m.soonest):''}));
+}
+function belowThreshold(rows){return rows.filter(r=>r.onhand<(r.threshold||10));}
+function nearExpiry(db,days=30){const out=[]; const now=today(); db.batches.forEach(b=>{if(b.qty>0&&b.expiry){const d=new Date(b.expiry); const diff=Math.ceil((d-now)/86400000); if(diff>=0&&diff<=days){const med=db.meds.find(m=>m.id===b.medId); out.push({name:med?med.name:'?',lot:b.lot||'',exp:fmtDate(d),qty:b.qty,days:diff});}}}); return out;}
+function monthlyUsage(db,y,m){const s=new Date(y,m-1,1),e=new Date(y,m,1);const agg={}; db.tx.forEach(t=>{const ts=new Date(t.ts); if(t.type==='USE'&&ts>=s&&ts<e){const med=db.meds.find(x=>x.id===t.medId); const k=med?med.name:'?'; agg[k]=(agg[k]||0)+(-t.qty);}}); return Object.entries(agg).map(([name,used])=>({name,used})).sort((a,b)=>b.used-a.used);}
+function monthlyReceive(db,y,m){const s=new Date(y,m-1,1),e=new Date(y,m,1);const agg={}; db.tx.forEach(t=>{const ts=new Date(t.ts); if(t.type==='RECEIVE'&&ts>=s&&ts<e){const med=db.meds.find(x=>x.id===t.medId); const k=med?med.name:'?'; agg[k]=(agg[k]||0)+(t.qty);}}); return Object.entries(agg).map(([name,recv])=>({name,recv}));}
+function useStock(db,medId,qty,note){qty=Math.max(1,parseInt(qty,10)||0);const rows=db.batches.filter(b=>b.medId===medId&&b.qty>0).sort((a,b)=>{const ae=a.expiry?new Date(a.expiry).getTime():Infinity;const be=b.expiry?new Date(b.expiry).getTime():Infinity;return ae===be?(new Date(a.rcvAt)-new Date(b.rcvAt)):ae-be;});let remain=qty;for(const b of rows){if(remain<=0)break;const take=Math.min(b.qty,remain);b.qty-=take;remain-=take;} if(remain>0)return [false,'재고가 부족합니다.']; db.tx.push({type:'USE',medId,qty:-qty,note:note||'',ts:new Date().toISOString()}); return [true,'ok'];}
+function drawBar(c,data){const ctx=c.getContext('2d'),W=c.width=c.clientWidth,H=c.height=280;ctx.clearRect(0,0,W,H);const pad=40,max=Math.max(1,...data.map(d=>d.value));ctx.strokeStyle='#334155';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(pad,10);ctx.lineTo(pad,H-pad);ctx.lineTo(W-10,H-pad);ctx.stroke();const n=data.length,bw=Math.max(20,(W-pad-20)/Math.max(1,n)-8);data.forEach((d,i)=>{const x=pad+10+i*(bw+8);const h=(H-pad-20)*(d.value/max);ctx.fillStyle='#22c55e';ctx.fillRect(x,H-pad-h,bw,h);ctx.fillStyle='#cbd5e1';ctx.font='12px system-ui';ctx.save();ctx.translate(x+bw/2,H-pad+12);ctx.rotate(-Math.PI/6);ctx.textAlign='left';ctx.fillText(d.label,0,0);ctx.restore();ctx.fillText(String(d.value),x,H-pad-h-6);});}
+function drawLine(c,labels,A,B){const ctx=c.getContext('2d'),W=c.width=c.clientWidth,H=c.height=280;ctx.clearRect(0,0,W,H);const pad=40,max=Math.max(1,...A,...B);ctx.strokeStyle='#334155';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(pad,10);ctx.lineTo(pad,H-pad);ctx.lineTo(W-10,H-pad);ctx.stroke();const n=labels.length,step=(W-pad-20)/Math.max(1,n-1);function plot(S,col){ctx.strokeStyle=col;ctx.lineWidth=2;ctx.beginPath();S.forEach((v,i)=>{const x=pad+i*step;const y=H-pad-(H-pad-20)*(v/Math.max(1,max));if(i===0)ctx.moveTo(x,y);else ctx.lineTo(x,y);});ctx.stroke();} plot(A,'#22c55e'); plot(B,'#60a5fa'); ctx.fillStyle='#cbd5e1';ctx.font='12px system-ui';labels.forEach((lb,i)=>{const x=pad+i*step;ctx.fillText(lb,x-14,H-pad+14);});}
+const tabs=document.querySelectorAll('#tabs button'); const sections={dash:'tab-dash',inout:'tab-inout',batches:'tab-batches',reports:'tab-reports',settings:'tab-settings'};
+tabs.forEach(btn=>btn.addEventListener('click',()=>{tabs.forEach(b=>b.classList.remove('active'));btn.classList.add('active');Object.values(sections).forEach(id=>document.getElementById(id).style.display='none');document.getElementById(sections[btn.dataset.tab]).style.display='block';render();}));
+document.getElementById('asof').textContent=new Date().toLocaleString();
+function render(){const db=load(); const opts=db.meds.map(m=>`<option value="${m.id}">${m.name}</option>`).join(''); ['rcvMed','useMed','delMed'].forEach(id=>document.getElementById(id).innerHTML='<option value="">선택</option>'+opts);
+  const oh=onhand(db).sort((a,b)=>a.name.localeCompare(b.name,'ko')); const tbody=document.querySelector('#tblOnhand tbody'); tbody.innerHTML=''; oh.forEach(r=>{const status=r.onhand<r.threshold?`<span class="pill danger">추가 구매 요망</span>`:''; const tr=document.createElement('tr'); tr.innerHTML=`<td>${r.name}</td><td>${r.unit||''}</td><td>${r.onhand}</td><td>${r.threshold}</td><td>${r.soonest||''}</td><td>${status}</td>`; tbody.appendChild(tr);});
+  const div=document.getElementById('alerts'); div.innerHTML=''; const low=oh.filter(x=>x.onhand<(x.threshold||10)); if(low.length===0) div.innerHTML+=`<div class="pill" style="background:#072916;color:#86efac;border-color:#14532d">안전수준 이상</div>`; else{const list=low.map(x=>`${x.name} (${x.onhand}/${x.threshold})`).join(', '); div.innerHTML+=`<div class="pill danger">10개 미만: ${list}</div>`;}
+  const ne=nearExpiry(db,30); if(ne.length>0){div.innerHTML+=`<div class="mt8 pill warn">유통기한 30일 이내: ${ne.map(x=>`${x.name}[${x.lot}] ${x.days}일`).join(', ')}</div>`;}
+  const tb=document.querySelector('#tblBatches tbody'); tb.innerHTML=''; db.batches.sort((a,b)=>{const ma=db.meds.find(x=>x.id===a.medId)?.name||'';const mb=db.meds.find(x=>x.id===b.medId)?.name||''; return ma.localeCompare(mb,'ko')||(a.expiry||'').localeCompare(b.expiry||'');}).forEach(b=>{const m=db.meds.find(x=>x.id===b.medId); const tr=document.createElement('tr'); tr.innerHTML=`<td>${m?m.name:'?'}</td><td>${b.lot||''}</td><td>${fmtDate(b.expiry)}</td><td>${b.qty}</td><td>${new Date(b.rcvAt).toLocaleDateString()}</td>`; tb.appendChild(tr);});
+  const monthInp=document.getElementById('repMonth'); if(!monthInp.value){const d=new Date(); monthInp.value=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;}
+  const [y,m]=monthInp.value.split('-').map(Number); const use=monthlyUsage(db,y,m).slice(0,10); const bar=document.getElementById('barTop'); drawBar(bar,use.map(x=>({label:x.name,value:x.used})));
+  const n=Math.min(24,Math.max(3,parseInt(document.getElementById('repN').value||'12',10))); const labels=[],seriesUse=[],seriesRecv=[]; const now=new Date(); now.setDate(1);
+  for(let i=n-1;i>=0;i--){const d=new Date(now); d.setMonth(d.getMonth()-i); const yy=d.getFullYear(),mm=d.getMonth()+1; labels.push(String(mm).padStart(2,'0')); const u=monthlyUsage(db,yy,mm).reduce((a,b)=>a+b.used,0); const r=monthlyReceive(db,yy,mm).reduce((a,b)=>a+b.recv,0); seriesUse.push(u); seriesRecv.push(r);}
+  const ln=document.getElementById('lineTrend'); drawLine(ln,labels,seriesUse,seriesRecv);
+}
+render();
+document.getElementById('btnAddMed').onclick=()=>{const db=load(); const name=document.getElementById('medName').value.trim(); if(!name){alert('의약품명을 입력하세요.'); return;} if(db.meds.some(m=>m.name===name)){alert('이미 등록된 이름입니다.'); return;} const unit=document.getElementById('medUnit').value.trim(); const th=parseInt(document.getElementById('medThreshold').value||'10',10); const id=(db.meds.reduce((mx,m)=>Math.max(mx,m.id),0)||0)+1; db.meds.push({id,name,unit,threshold:Math.max(1,th)}); save(db); document.getElementById('medName').value=''; render(); alert('등록 완료');};
+document.getElementById('btnReceive').onclick=()=>{const db=load(); const medId=parseInt(document.getElementById('rcvMed').value||'0',10); if(!medId){alert('의약품을 선택하세요.'); return;} const lot=document.getElementById('rcvLot').value.trim(); const exp=parseDateInput(document.getElementById('rcvExp').value); const qty=parseInt(document.getElementById('rcvQty').value||'0',10); const note=document.getElementById('rcvNote').value.trim(); if(!qty||qty<=0){alert('입고 수량을 입력하세요.'); return;} db.batches.push({id:crypto.randomUUID(),medId,lot,expiry:exp?fmtDate(exp):null,qty,rcvAt:new Date().toISOString()}); db.tx.push({type:'RECEIVE',medId,qty,note,ts:new Date().toISOString()}); save(db); render(); alert('입고 반영 완료');};
+document.getElementById('btnUse').onclick=()=>{const db=load(); const medId=parseInt(document.getElementById('useMed').value||'0',10); const qty=parseInt(document.getElementById('useQty').value||'0',10); const note=document.getElementById('useNote').value.trim(); if(!medId){alert('의약품을 선택하세요.'); return;} if(!qty||qty<=0){alert('사용 수량을 입력하세요.'); return;} const [ok,msg]=useStock(db,medId,qty,note); if(!ok){alert(msg); return;} save(db); render(); alert('사용(출고) 반영 완료');};
+document.getElementById('btnDelete').onclick=()=>{const db=load(); const medId=parseInt(document.getElementById('delMed').value||'0',10); if(!medId){alert('의약품을 선택하세요.'); return;} if(!confirm('정말 삭제하시겠습니까? 관련 데이터도 함께 삭제됩니다.')) return; db.meds=db.meds.filter(m=>m.id!==medId); db.batches=db.batches.filter(b=>b.medId!==medId); db.tx=db.tx.filter(t=>t.medId!==medId); save(db); render(); alert('삭제 완료');};
+document.getElementById('btnExport').onclick=()=>{const blob=new Blob([localStorage.getItem(KEY)||'{}'],{type:'application/json;charset=utf-8'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='med_inventory_backup.json'; a.click(); URL.revokeObjectURL(a.href);};
+document.getElementById('btnImport').onclick=()=>{const file=document.getElementById('impFile').files[0]; if(!file){alert('가져올 JSON 파일을 선택하세요.'); return;} const fr=new FileReader(); fr.onload=()=>{try{const obj=JSON.parse(fr.result); if(!obj.meds||!obj.batches||!obj.tx) throw new Error('형식 오류'); save(obj); render(); alert('가져오기 완료');}catch(e){alert('가져오기 실패: '+e.message);}}; fr.readAsText(file,'utf-8');};
+document.getElementById('repMonth').addEventListener('change',render);
+document.getElementById('repN').addEventListener('change',render);
+</script>
+</body>
+</html>
